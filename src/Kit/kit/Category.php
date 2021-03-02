@@ -1,5 +1,5 @@
 <?php
-namespace Kit\kit;
+namespace kit;
 
 use pocketmine\item\Item;
 use pocketmine\utils\TextFormat;
