@@ -1,5 +1,5 @@
 <?php
-namespace benzo\ArcticKits\inventory;
+namespace Kit\inventory;
 
 use pocketmine\block\BlockFactory;
 use pocketmine\block\BlockIds;
@@ -12,7 +12,7 @@ use pocketmine\network\mcpe\protocol\BlockActorDataPacket;
 use pocketmine\network\mcpe\protocol\ContainerOpenPacket;
 use pocketmine\network\mcpe\protocol\types\WindowTypes;
 use pocketmine\Player;
-use benzo\ArcticKits\kit\Category;
+use Kit\kit\Category;
 
 class CategoryInventory extends BaseInventory {
 
