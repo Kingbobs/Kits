@@ -1,0 +1,83 @@
+---
+# Kit ID, This must be unique for all kits
+id: starter
+
+# Name of the kit
+# Supports color characters such as '&'
+name: "&r&f-[ &bStarter Kit &f]-"
+
+# Kit description
+# Supports color characters
+description:
+- " "
+- "&r&a* Cooked Beef x16"
+- "&r&a* Cobble Stone x64"
+- "&r&a* Oak Wood x16"
+- "&r&e* Saturation I 2m"
+- "&r&e* Iron Ingot x16"
+- "&r&e* Iron Armor Set x1"
+- "&r&c* $10,000 Cash"
+
+
+# Kit permission
+# Must be unique for each kit
+permission: kit.starter
+
+# Kit cool-down (In seconds)
+# Set to -1 to make it obtainable once
+cooldown: -1
+
+# Kit cost
+# -1 will make it unable to purchase
+cost: 0
+
+# Display Item in category section
+display-item: "shulker_box"
+
+# Items to grant on use
+items:
+- item: "steak"
+  count: 16
+  # customName: <- optional
+  # nbt: <- optional
+  # enchants:
+  # - sharpness 5 <- optional
+  #ce's like "ceID:minLevel:maxLevel:chance
+  #the chance is the chance of adding those ce's to the item
+  #ce:
+  #  - "1:1:3" <- optional
+  ce:
+    - "1:1:3:80"
+    - "2:1:3:100"
+- item: "cobblestone"
+  count: 64
+- item: "wood"
+  count: 16
+- item: "iron_ingot"
+  count: 16
+- item: "iron_helmet"
+  count: 1
+- item: "iron_chestplate"
+  count: 1
+- item: "iron_leggings"
+  count: 1
+- item: "iron_boots"
+  count: 1
+
+# Commands to run when kit is used
+# Tags:
+# .player. - player name
+# .display-name. -  player's display name
+# .x. - X axis
+# .y. - Y axis
+# .z. - Z axis
+# .world. - World name player is in
+commands:
+- "givemoney .player. 10000"
+
+# Effects granted when kit is used
+# Format: name/id duration amplifier
+effects:
+- saturation 120 1
+
+...
