@@ -1,5 +1,5 @@
 <?php
-namespace Kit\kit;
+namespace kit;
 
 use pocketmine\command\ConsoleCommandSender;
 
