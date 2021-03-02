@@ -1,5 +1,5 @@
 <?php
-namespace benzo\ArcticKits\kit;
+namespace Kit\kit;
 
 use pocketmine\command\ConsoleCommandSender;
 
