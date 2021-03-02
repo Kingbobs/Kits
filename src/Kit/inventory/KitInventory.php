@@ -1,5 +1,5 @@
 <?php
-namespace benzo\ArcticKits\inventory;
+namespace Kit\inventory;
 
 use pocketmine\block\BlockFactory;
 use pocketmine\block\BlockIds;
