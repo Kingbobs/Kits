@@ -12,7 +12,7 @@ use pocketmine\network\mcpe\protocol\BlockActorDataPacket;
 use pocketmine\network\mcpe\protocol\ContainerOpenPacket;
 use pocketmine\network\mcpe\protocol\types\WindowTypes;
 use pocketmine\Player;
-use Kit\kit\Category;
+use kit\Category;
 
 class CategoryInventory extends BaseInventory {
 
