@@ -12,7 +12,7 @@ use pocketmine\network\mcpe\protocol\BlockActorDataPacket;
 use pocketmine\network\mcpe\protocol\ContainerOpenPacket;
 use pocketmine\network\mcpe\protocol\types\WindowTypes;
 use pocketmine\Player;
-use benzo\ArcticKits\kit\Category;
+use Kit\kit\Category;
 
 class KitInventory extends BaseInventory {
 
