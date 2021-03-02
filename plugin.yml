@@ -1,10 +1,10 @@
 ---
-name: ArcticKits
+name: Kits
 version: 1.0.1
 api: 3.0.0
-author: benzo
+author: Kingbobs
 description: "Advanced kits plugin by benzo"
-main: benzo\ArcticKits\Loader
+main: Kits\Loader
 commands:
   kits:
     description: "Open kit menu"
