@@ -49,7 +49,7 @@ class CategoryInventory extends BaseInventory {
      * @return string
      */
     public function getName(): string {
-        return "§l§3» §r§bArctic §7Kits";
+        return "§l§3» §r§7Kits";
     }
 
     /**
