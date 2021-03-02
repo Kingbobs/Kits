@@ -1,5 +1,5 @@
 <?php
-namespace benzo\ArcticKits;
+namespace Kit;
 
 use onebone\economyapi\EconomyAPI;
 use pocketmine\command\Command;
@@ -29,10 +29,10 @@ use pocketmine\scheduler\Task;
 use pocketmine\utils\MainLogger;
 use pocketmine\utils\TextFormat;
 
-use benzo\ArcticKits\inventory\CategoryInventory;
-use benzo\ArcticKits\inventory\KitInventory;
-use benzo\ArcticKits\kit\Category;
-use benzo\ArcticKits\kit\Kit;
+use Kit\inventory\CategoryInventory;
+use Kit\inventory\KitInventory;
+use Kit\kit\Category;
+use Kit\kit\Kit;
 
 class Loader extends PluginBase implements Listener {
 
