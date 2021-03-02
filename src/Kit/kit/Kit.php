@@ -19,7 +19,7 @@ use pocketmine\Server;
 
 use pocketmine\utils\TextFormat;
 
-use benzo\ArcticKits\Loader;
+use Kit\Loader;
 
 class Kit {
 
