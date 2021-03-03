@@ -5,5 +5,5 @@ branches:
 projects:
   Kits:
     path: ""
-    icon: ""
+    icon: "images.jpg"
 ...
