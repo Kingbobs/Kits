@@ -80,25 +80,26 @@ class Loader extends PluginBase implements Listener {
     /**
      * @throws \Exception
      */
-    public function onEnable() {
-        $this->getServer()->getPluginManager()->registerEvents($this, $this);
+public function onEnable() {
+    $this->getServer()->getPluginManager()->registerEvents($this, $this);
 
-        foreach (scandir($this->getDataFolder() . "categories/") as $fileName) {
-            if (in_array($fileName, [".", ".."]) || !is_dir($this->getDataFolder() . "categories/" . $fileName . "/")) {
-                continue;
-            }
-            $dir = $this->getDataFolder() . "categories/" . $fileName . "/";
+    foreach (scandir($this->getDataFolder() . "categories/") as $fileName) {
+        if (in_array($fileName, [".", ".."]) || !is_dir($this->getDataFolder() . "categories/" . $fileName . "/")) {
+            continue;
+        }
+        $dir = $this->getDataFolder() . "categories/" . $fileName . "/";
 
-            if (file_exists($dir . "category.conf")) {
-                $data = yaml_parse_file($dir . "category.conf");
+        if (file_exists($dir . "category.conf")) {
+            $data = yaml_parse_file($dir . "category.conf");
 
-                $name = TextFormat::colorize($data["name"]);
-                $des = TextFormat::colorize(implode("\n", $data["description"]));
+            $name = TextFormat::colorize($data["name"]);
+            $des = TextFormat::colorize(implode("\n", $data["description"]));
 
-                $item = ItemFactory::fromString($data["display-item"]);
-                $item->setCustomName(TextFormat::RESET . $.$name);
-                $item->setLore([$des]);
-                            $category = new Category($name, $item);
+            $item = ItemFactory::fromString($data["display-item"]);
+            $item->setCustomName(TextFormat::RESET . $name);
+            $item->setLore([$des]);
+
+            $category = new Category($name, $item);
             $category->setDescription($des);
 
             foreach (scandir($dir) as $kitFile) {
@@ -147,7 +148,6 @@ class Loader extends PluginBase implements Listener {
 
     $this->getLogger()->info("KitLoader v" . self::VERSION . " by onebone has been enabled.");
 }
-
 public function onDisable() {
     $cooldownsYml = yaml_emit($this->cooldowns, YAML_UTF8_ENCODING);
     file_put_contents($this->getDataFolder() . "cooldown.yml", $cooldownsYml);
