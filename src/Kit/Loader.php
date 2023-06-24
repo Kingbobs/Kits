@@ -1,4 +1,12 @@
 <?php
+
+/**
+ * @name KitLoader
+ * @version 1.0.1
+ * @main Kit\Loader
+ * @api 4.0.0
+ */
+
 namespace Kit;
 
 use onebone\economyapi\EconomyAPI;
@@ -6,29 +14,23 @@ use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\event\inventory\InventoryTransactionEvent;
 use pocketmine\event\Listener;
-
 use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\event\player\PlayerItemHeldEvent;
 use pocketmine\inventory\transaction\action\SlotChangeAction;
 use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\enchantment\EnchantmentInstance;
-
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
 use pocketmine\item\ItemIds;
-
 use pocketmine\level\Level;
 use pocketmine\nbt\JsonNbtParser;
 use pocketmine\nbt\tag\ListTag;
-
 use pocketmine\nbt\tag\StringTag;
 use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\Task;
-
 use pocketmine\utils\MainLogger;
 use pocketmine\utils\TextFormat;
-
 use Kit\inventory\CategoryInventory;
 use Kit\inventory\KitInventory;
 use Kit\kit\Category;
@@ -57,21 +59,20 @@ class Loader extends PluginBase implements Listener {
     public function onLoad() {
         self::$instance = $this;
 
-        if(is_dir($this->getDataFolder() . "categories/") == false){
+        if (!is_dir($this->getDataFolder() . "categories/")) {
             mkdir($this->getDataFolder() . "categories/");
         }
-        if(file_exists($this->getDataFolder() . "config.yml") == false){
+        if (!file_exists($this->getDataFolder() . "config.yml")) {
             $this->saveResource("categories/example/category.conf");
             $this->saveResource("categories/example/example.yml");
         }
 
         $this->saveResource("config.yml");
-        if($this->getConfig()->get("version") !== self::VERSION){
+        if ($this->getConfig()->get("version") !== self::VERSION) {
             $this->getLogger()->warning("Unknown config version detected, resetting config...");
-
             $this->saveResource("config.yml", true);
         }
-        if(file_exists($this->getDataFolder() . "cooldown.yml")){
+        if (file_exists($this->getDataFolder() . "cooldown.yml")) {
             $this->cooldowns = yaml_parse_file($this->getDataFolder() . "cooldown.yml");
         }
     }
@@ -82,310 +83,319 @@ class Loader extends PluginBase implements Listener {
     public function onEnable() {
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
 
-        foreach(scandir($this->getDataFolder() . "categories/") as $fileName){
-            if(in_array($fileName, [
-                    ".",
-                    ".."
-                ]) or is_dir($this->getDataFolder() . "categories/" . $fileName . "/") == false){
+        foreach (scandir($this->getDataFolder() . "categories/") as $fileName) {
+            if (in_array($fileName, [".", ".."]) || !is_dir($this->getDataFolder() . "categories/" . $fileName . "/")) {
                 continue;
             }
             $dir = $this->getDataFolder() . "categories/" . $fileName . "/";
 
-            if(file_exists($dir . "category.conf")){
+            if (file_exists($dir . "category.conf")) {
                 $data = yaml_parse_file($dir . "category.conf");
 
                 $name = TextFormat::colorize($data["name"]);
                 $des = TextFormat::colorize(implode("\n", $data["description"]));
 
                 $item = ItemFactory::fromString($data["display-item"]);
-                $item->setCustomName(TextFormat::RESET . $name . "\n" . TextFormat::RESET . $des);
-                $item->setNamedTagEntry(new ListTag("ench", []));
-                $item->setNamedTagEntry(new StringTag("category", $name));
+                $item->setCustomName(TextFormat::RESET . $.$name);
+                $item->setLore([$des]);
+                            $category = new Category($name, $item);
+            $category->setDescription($des);
 
-                $category = new Category($name, $des, $item);
-
-                foreach(glob($dir . "*.yml") as $kitConf){
-                    $category->addKit(new Kit(yaml_parse_file($kitConf), $category));
+            foreach (scandir($dir) as $kitFile) {
+                if (in_array($kitFile, [".", ".."]) || $kitFile === "category.conf") {
+                    continue;
                 }
 
-                $this->categories[$category->getName()] = $category;
-            }
-        }
+                $kitData = yaml_parse_file($dir . $kitFile);
 
-        $this->getScheduler()->scheduleRepeatingTask(new class() extends Task {
-            /**
-             * @param int $currentTick
-             */
-            public function onRun(int $currentTick) {
-                Loader::getInstance()->tickCD();
-            }
-        }, 20);
-    }
+                $kitName = TextFormat::colorize($kitData["name"]);
+                $kitItem = ItemFactory::fromString($kitData["display-item"]);
 
-    public function onDisable() {
-        file_put_contents($this->getDataFolder() . "cooldown.yml", yaml_emit($this->cooldowns));
-    }
+                $kit = new Kit($kitName, $kitItem);
 
-    public function tickCD(): void {
-        foreach($this->cooldowns as $name => $cds){
-            foreach($cds as $kit => $cd){
-                if($cd > 0){
-                    $this->cooldowns[$name][$kit]--;
-                }
-            }
-        }
-    }
+                foreach ($kitData["items"] as $itemData) {
+                    $item = ItemFactory::fromString($itemData["item"]);
+                    $item->setCustomName(TextFormat::RESET . $itemData["name"]);
+                    $item->setLore($itemData["lore"]);
 
-    /**
-     * @param int $seconds
-     * @return string
-     */
-    public static function secondToTime(int $seconds): string {
-        $hours = floor($seconds / 3600);
-        $minutes = floor(($seconds - $hours * 3600) / 60);
-        $seconds = floor($seconds - ($hours * 3600) - ($minutes * 60));
-
-        return "$hours hours, $minutes minutes and $seconds seconds";
-    }
-
-    /**
-     * @param array $data
-     * @return Item
-     * @throws \Exception
-     */
-    public static function buildItem(array $data): Item {
-        $item = null;
-
-        try{
-            $item = ItemFactory::fromString($data["item"]);
-            $item->setCount(intval($data["count"] ?? 1));
-        }catch(\Exception $exception){
-            MainLogger::getLogger()->warning("Item: " . ($data["item"] ?? "null") . " is not valid");
-        }finally{
-            if($item == null){
-                return ItemFactory::get(ItemIds::AIR);
-            }
-        }
-        if(isset($data["nbt"])){
-            $nbt = JsonNbtParser::parseJson($data["nbt"]);
-            $item->setNamedTag($nbt);
-        }
-        if(isset($data["customName"])){
-            $item->setCustomName(TextFormat::colorize(str_replace("\n", "\n", $data["customName"])));
-        }
-        if(isset($data["enchants"])){
-            $enchants = $data["enchants"];
-
-            foreach($enchants as $e){
-                $v = explode(" ", $e);
-                $id = $v[0];
-                $level = $v[1] ?? 1;
-
-                $ench = Enchantment::getEnchantmentByName($id) ?? Enchantment::getEnchantment(intval($id));
-                if($ench !== null){
-                    $enchant = new EnchantmentInstance($ench, intval($level));
-
-                    $item->addEnchantment($enchant);
-                }
-            }
-        }
-
-        return $item;
-    }
-
-    /**
-     * @param string $id
-     * @return null|Kit
-     */
-    public function getKit(string $id): ?Kit {
-        foreach($this->categories as $category){
-            $k = $category->getKit($id);
-
-            if($k !== null){
-                return $k;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param string $name
-     * @return null|Category
-     */
-    public function getCategory(string $name): ?Category {
-        return $this->categories[$name] ?? null;
-    }
-
-    /**
-     * @param PlayerInteractEvent $event
-     */
-    public function onInteract(PlayerInteractEvent $event): void {
-        $player = $event->getPlayer();
-        $item = $event->getItem();
-
-        if($item->getNamedTag()->hasTag("kitId")){
-            $kit = $this->getKit($item->getNamedTagEntry("kitId")->getValue());
-
-            if($kit !== null){
-                $event->setCancelled();
-
-                $c = count($kit->getItems());
-                $cc = $player->getInventory()->getSize() - count($player->getInventory()->getContents());
-
-                if($c > $cc){
-                    $player->sendMessage(TextFormat::RED . "Your inventory doesn't have enough space! Need $c free slots.");
-                }else{
-                    $kit->grant($player);
-
-                    $item->setCount(1);
-                    $player->getInventory()->removeItem($item);
-                }
-            }
-        }
-    }
-
-    /**
-     * @param PlayerItemHeldEvent $event
-     */
-    public function onHeld(PlayerItemHeldEvent $event): void {
-        $player = $event->getPlayer();
-
-        foreach($player->getInventory()->getContents() as $slot => $content){
-            if($content->getNamedTag()->hasTag("kitId")){
-                $kit = $this->getKit($content->getNamedTagEntry("kitId")->getValue());
-
-                if($kit !== null){
-                    if($kit->getDisplayItem()->equals($content) == false){
-                        $i = clone $kit->getDisplayItem();
-                        $i->setCount($content->getCount());
-
-                        $player->getInventory()->setItem($slot, $i);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * @param InventoryTransactionEvent $event
-     * @priority HIGHEST
-     */
-    public function onTransaction(InventoryTransactionEvent $event): void {
-        $tran = $event->getTransaction();
-        $player = $tran->getSource();
-
-        foreach($tran->getActions() as $action){
-            if($action instanceof SlotChangeAction){
-                $inv = $action->getInventory();
-                $item = $inv->getItem($action->getSlot());
-
-                if($inv instanceof CategoryInventory){
-                    $event->setCancelled();
-
-                    if($item->isNull() == false){
-                        $category = $this->getCategory($item->getNamedTagEntry("category")->getValue());
-
-                        if($category !== null){
-                            $player->removeWindow($inv);
-
-                            $newInv = new KitInventory($player->asPosition(), $category);
-                            $this->getScheduler()->scheduleDelayedTask(new class($newInv, $player) extends Task {
-                                /** @var Player */
-                                protected $player;
-
-                                /** @var KitInventory */
-                                protected $inv;
-
-                                /**
-                                 *  constructor.
-                                 * @param KitInventory $inv
-                                 * @param Player $player
-                                 */
-                                public function __construct(KitInventory $inv, Player $player) {
-                                    $this->player = $player;
-                                    $this->inv = $inv;
-                                }
-
-                                /**
-                                 * @param int $currentTick
-                                 */
-                                public function onRun(int $currentTick) {
-                                    $this->player->addWindow($this->inv);
-                                }
-                            }, 20);
-                        }
-                    }
-                }elseif($inv instanceof KitInventory){
-                    $event->setCancelled();
-
-                    if($item->isNull() == false){
-                        $kit = $this->getKit($item->getNamedTagEntry("kitId")->getValue());
-
-                        if($kit !== null){
-                            if($player->hasPermission("kit.bypass") == false){
-                                if($kit->getCost() == -1 and $player->hasPermission($kit->getPermission()) == false){
-                                    $player->sendMessage(TextFormat::RED . "You don't have permission to use that kit");
-
-                                    return;
-                                }
-                                if($kit->getCost() > 0 and EconomyAPI::getInstance()->myMoney($player) < $kit->getCost()){
-                                    if($player->hasPermission($kit->getPermission()) == false){
-                                        $player->sendMessage(TextFormat::RED . "You can't afford kit: " . $kit->getName());
-
-                                        return;
-                                    }
-                                }
-                                if(($player->getInventory()->getSize() - count($player->getInventory()->getContents())) == 0){
-                                    $player->sendMessage(TextFormat::RED . "Your inventory is full!");
-
-                                    return;
-                                }
-                                $cd = ($this->cooldowns[$player->getName()][$kit->getId()] ?? 0);
-                                if($cd > 0){
-                                    $player->sendMessage(TextFormat::RED . "Kit: " . $kit->getName() . TextFormat::RESET . TextFormat::RED . " is still in cooldown for " . self::secondToTime($cd));
-
-                                    return;
-                                }elseif($cd == -1){
-                                    $player->sendMessage(TextFormat::RED . "That kit is one time use only!");
-
-                                    return;
-                                }
-
-                                $player->getInventory()->addItem(clone $kit->getDisplayItem());
-                                $this->cooldowns[$player->getName()][$kit->getId()] = $kit->getCooldown();
-                                if($kit->getCost() > 0 and $player->hasPermission($kit->getPermission()) == false){
-                                    EconomyAPI::getInstance()->reduceMoney($player, $kit->getCost());
-                                }
-
-                            }else{
-                                $player->getInventory()->addItem(clone $kit->getDisplayItem());
+                    if (isset($itemData["enchantments"])) {
+                        foreach ($itemData["enchantments"] as $enchantmentData) {
+                            $enchantment = Enchantment::getEnchantmentByName($enchantmentData["name"]);
+                            if ($enchantment === null) {
+                                MainLogger::getLogger()->warning("Invalid enchantment: " . $enchantmentData["name"]);
+                                continue;
                             }
+                            $enchantmentInstance = new EnchantmentInstance($enchantment, $enchantmentData["level"]);
+                            $item->addEnchantment($enchantmentInstance);
                         }
                     }
+
+                    if (isset($itemData["nbt"])) {
+                        $nbt = JsonNbtParser::parseJson($itemData["nbt"]);
+                        $item->setNamedTagEntry($nbt);
+                    }
+
+                    $kit->addItem($item);
                 }
+
+                $category->addKit($kit);
             }
+
+            $this->categories[] = $category;
         }
     }
 
-    /**
-     * @param CommandSender $sender
-     * @param Command $command
-     * @param string $label
-     * @param array $args
-     * @return bool
-     */
-    public function onCommand(CommandSender $sender, Command $command, string $label, array $args): bool {
-        if($sender instanceof Player){
-            if($sender->y < 0 or $sender->y > Level::Y_MAX){
-                $sender->sendMessage(TextFormat::RED . "Your Y level must be between 0-256 in order to open kits menu");
-            }else{
-                $sender->addWindow(new CategoryInventory($sender->asPosition(), $this->categories));
-            }
-        }else{
-            $this->getLogger()->info("Working fine, you should check in-game");
+    $this->getLogger()->info("KitLoader v" . self::VERSION . " by onebone has been enabled.");
+}
+
+public function onDisable() {
+    $cooldownsYml = yaml_emit($this->cooldowns, YAML_UTF8_ENCODING);
+    file_put_contents($this->getDataFolder() . "cooldown.yml", $cooldownsYml);
+}
+
+public function onCommand(CommandSender $sender, Command $command, string $label, array $args): bool {
+    if (!$sender instanceof Player) {
+        $sender->sendMessage(TextFormat::RED . "This command can only be used in-game.");
+        return true;
+    }
+
+    if (strtolower($command->getName()) === "kit") {
+        if (empty($args)) {
+            $sender->sendMessage(TextFormat::RED . "Usage: /kit <category>");
+            return true;
+        }
+
+        $categoryName = strtolower($args[0]);
+        $category = $this->getCategoryByName($categoryName);
+
+        if ($category === null) {
+            $sender->sendMessage(TextFormat::RED . "Invalid kit category.");
+            return true;
+        }
+
+        $inventory = new KitInventory($category, $sender);
+        $sender->addWindow($inventory->getInventory());
+
+        return true;
+    }
+
+    if (strtolower($command->getName()) === "kitadmin") {
+        if (!$sender->hasPermission("kitloader.admin")) {
+            $sender->sendMessage(TextFormat::RED . "You don't have permission to use this command.");
+            return true;
+        }
+
+        if (empty($args)) {
+            $sender->sendMessage(TextFormat::RED . "Usage: /kitadmin <subcommand> [args...]");
+            return true;
+        }
+
+        $subCommand = strtolower($args[0]);
+
+        switch ($subCommand) {
+            case "reload":
+                $this->reloadConfig();
+                $this->loadKits();
+                $sender->sendMessage(TextFormat::GREEN . "Kits reloaded.");
+                break;
+            case "give":
+                if (count($args) < 3) {
+                    $sender->sendMessage(TextFormat::RED . "Usage: /kitadmin give <player> <kit>");
+                    return true;
+                }
+
+                $playerName = $args[1];
+                $kitName = strtolower($args[2]);
+
+                $player = $this->getServer()->getPlayerExact($playerName);
+                if ($player === null) {
+                    $sender->sendMessage(TextFormat::RED . "Invalid player.");
+                    return true;
+                }
+
+                $kit = $this->getKitByName($kitName);
+                if ($kit === null) {
+                    $sender->sendMessage(TextFormat::RED . "Invalid kit.");
+                    return true;
+                }
+
+                $player->getInventory()->addItem($kit->getItem());
+                $sender->sendMessage(TextFormat::GREEN . "Given kit " . $kit->getName() . " to player " . $player->getName());
+                break;
+            default:
+                $sender->sendMessage(TextFormat::RED . "Invalid subcommand. Available subcommands: reload, give");
+                break;
         }
 
         return true;
+    }
+
+    return false;
+}
+
+public function onPlayerInteract(PlayerInteractEvent $event) {
+    $player = $event->getPlayer();
+    $item = $event->getItem();
+    $action = $event->getAction();
+
+    if ($action === PlayerInteractEvent::RIGHT_CLICK_AIR || $action === PlayerInteractEvent::RIGHT_CLICK_BLOCK) {
+        $category = $this->getCategoryByItem($item);
+
+        if ($category !== null) {
+            $inventory = new KitInventory($category, $player);
+            $player->addWindow($inventory->getInventory());
+        }
+    }
+}
+
+public function onPlayerJoin(PlayerJoinEvent $event) {
+    $player = $event->getPlayer();
+    $uuid = $player->getUniqueId()->toString();
+    if (!isset($this->cooldowns[$uuid])) {
+        $this->cooldowns[$uuid] = [];
+    }
+}
+
+public function onPlayerQuit(PlayerQuitEvent $event) {
+    $player = $event->getPlayer();
+    $uuid = $player->getUniqueId()->toString();
+    if (isset($this->cooldowns[$uuid])) {
+        unset($this->cooldowns[$uuid]);
+    }
+}
+
+public function getCategoryByName(string $name): ?Category {
+    foreach ($this->categories as $category) {
+        if (strtolower($category->getName()) === strtolower($name)) {
+            return $category;
+        }
+    }
+    return null;
+}
+
+public function getCategoryByItem(Item $item): ?Category {
+    foreach ($this->categories as $category) {
+        if ($item->equals($category->getItem())) {
+            return $category;
+        }
+    }
+    return null;
+}
+
+public function getKitByName(string $name): ?Kit {
+    foreach ($this->categories as $category) {
+        $kit = $category->getKitByName($name);
+        if ($kit !== null) {
+            return $kit;
+        }
+    }
+    return null;
+}
+
+public function getCooldowns(): array {
+    return $this->cooldowns;
+}
+
+public function getCooldown(Player $player, Kit $kit): int {
+    $uuid = $player->getUniqueId()->toString();
+    $kitName = strtolower($kit->getName());
+    if (isset($this->cooldowns[$uuid][$kitName])) {
+        return $this->cooldowns[$uuid][$kitName];
+    }
+    return 0;
+}
+
+public function setCooldown(Player $player, Kit $kit, int $seconds) {
+    $uuid = $player->getUniqueId()->toString();
+    $kitName = strtolower($kit->getName());
+    $this->cooldowns[$uuid][$kitName] = $seconds;
+}
+
+public function reduceCooldowns() {
+    foreach ($this->cooldowns as $uuid => &$kits) {
+        foreach ($kits as $kitName => &$cooldown) {
+            if ($cooldown > 0) {
+                $cooldown--;
+            }
+            if ($cooldown === 0) {
+                unset($kits[$kitName]);
+            }
+        }
+    }
+}
+class Kit {
+    private $name;
+    private $item;
+
+    public function __construct(string $name, Item $item) {
+        $this->name = $name;
+        $this->item = $item;
+    }
+
+    public function getName(): string {
+        return $this->name;
+    }
+
+    public function getItem(): Item {
+        return $this->item;
+    }
+}
+
+class Category {
+    private $name;
+    private $item;
+    private $kits;
+
+    public function __construct(string $name, Item $item) {
+        $this->name = $name;
+        $this->item = $item;
+        $this->kits = [];
+    }
+
+    public function getName(): string {
+        return $this->name;
+    }
+
+    public function getItem(): Item {
+        return $this->item;
+    }
+
+    public function addKit(Kit $kit) {
+        $this->kits[$kit->getName()] = $kit;
+    }
+
+    public function removeKit(Kit $kit) {
+        unset($this->kits[$kit->getName()]);
+    }
+
+    public function getKitByName(string $name): ?Kit {
+        if (isset($this->kits[$name])) {
+            return $this->kits[$name];
+        }
+        return null;
+    }
+
+    public function getKits(): array {
+        return $this->kits;
+    }
+}
+
+class KitInventory extends ChestInventory {
+    private $category;
+
+    public function __construct(Category $category, Player $player) {
+        parent::__construct($player, 27);
+        $this->category = $category;
+
+        $this->setContents($this->generateContents());
+    }
+
+    public function generateContents(): array {
+        $contents = [];
+        $kits = $this->category->getKits();
+        foreach ($kits as $kit) {
+            $contents[] = $kit->getItem();
+        }
+        return $contents;
     }
 }
