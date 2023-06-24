@@ -322,8 +322,7 @@ public function reduceCooldowns() {
             }
         }
     }
-}
-class Kit {
+    class Kit {
     private $name;
     private $item;
 
